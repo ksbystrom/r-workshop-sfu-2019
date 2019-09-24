@@ -1,0 +1,161 @@
+---
+title: "R Basics"
+author: "Kristen Bystrom"
+date: "September 21, 2019"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = TRUE)
+
+#You may need to run install.packages("prettydoc") for this document to knit)
+```
+
+| Topics Covered                                        | Min | 
+|-------------------------------------------------------|-----|
+| Features of RStudio                                   | 5   | 
+| Working with Packages and Libraries                   | 5   | 
+| Understanding Functions                               | 5   | 
+| Reading Data                                          | 5   |
+| Beginner Visualization                                | 10  |
+| Bonus Highlight: Learn how to make R rap to you!      | 10  | 
+
+
+### Features of RStudio
+- R/ R Studio/ Jupyter / R Studio Cloud
+- Workspace
+- Console
+- Editor
+- R Markdown
+- Running Code Chunks
+- Environment
+- Files/ Plots/ Packages/ **Help**/ Viewer
+
+
+### Working with Packages and Libraries  
+
+When you install R, it comes with some basic capabilities. 
+However, R is an **open source** language which means that anybody can make **packages** that add extra features you can use. There are two steps to use these packages.
+
+1. Install the **package** onto your computer (you only need to do this once)
+```{r}
+#install.packages("ggplot2")
+```
+
+2. Load the **library** in your current R session (you need to do this for every new R program you write and should have this code in your library)
+```{r}
+library(ggplot2)
+```
+
+
+### Understanding Functions    
+
+You have already seen **functions**! They look like a word followed by a set of soft brackets like library(), read.csv(), sum(), or c(). The word before the soft brackets describes what the function does, and you may need to add **arguments** inside the brackets to help give the expressions information they need to operate. 
+
+Let's try some functions!
+
+The c() function creates a vector which can store one kind of data so you can use it later. The arguments it takes are data observations
+```{r}
+myNumericVector <- c(2,3,7,8,10)
+myCharacterVector <- c("Blue", "Blue", "Red", "Red", "Red")
+
+myNumericVector
+myCharacterVector
+```
+
+The sum() function adds up all the arguments
+```{r}
+sum(2, 2)
+sum(2,3,7,8,10)
+sum(myNumericVector)
+```
+
+
+### Reading Data      
+One of the main ways people use R is to work with data to do visualization or statistical analysis. To do this, it's best to put the data file in the same folder as your **R Project**, and then use a function to read it in to your R Session.
+
+```{r}
+myData <- read.csv("totally_normal_data.csv", header = FALSE)
+```
+
+The head() function is helpful to see what the data looks like. So is the str() function.
+
+```{r}
+head(myData, n = 10)
+str(myData)
+```
+
+Rename the columns to something descriptive.
+
+```{r}
+colnames(myData) <- c("Beyonce", "Khaled")
+```
+
+### Beginner Visualization     
+
+Let's see what the data looks like. Remember, you may need to **install** the **package** first before **loading** the **library**. 
+```{r}
+# install.packages("ggplot2")
+
+library(ggplot2)
+
+ggplot(myData, aes(x = Beyonce, y = Khaled))+
+  geom_point()
+
+```
+
+Credit for the dataset to:
+https://cran.r-project.org/web/packages/datasauRus/vignettes/Datasaurus.html
+
+We can do a lot better than that!
+
+```{r}
+# install.packages("ggplot2")
+
+library(ggplot2)
+library(ggthemes)
+library(viridis)
+
+ggplot(myData, aes(x = Beyonce, y = Khaled, color = Khaled))+
+  geom_point()+
+  ggtitle("Land Before Time")+
+  xlab("Dinosaur Height")+
+  ylab("Dinosaur Width")+
+  theme_few()+scale_color_viridis()
+
+```
+
+### Bonus Highlight: Learn how to make R rap to you! 
+
+So why is R the best programming language? Well let me show you a few of my favourite things:
+
+I often use the beepr package in R which has handy ringtones and short songs that can play when your code finishes executing.
+
+However, R also has a library called BRRR
+```{r}
+if(!require(devtools)) {install.packages('devtools')}
+devtools::install_github("brooke-watson/BRRR")
+library(BRRR)
+```
+
+Let's test it!
+
+```{r}
+skrrrahh(sound = 26)
+```
+
+```{r}
+skrrrahh("snoop")
+```
+
+```{r}
+skrrrahh(10)
+```
+
+You can also change your options so DJ Kaled consoles you every time you hit an error message
+```{r}
+options(error = function() {skrrrahh(34)})
+```

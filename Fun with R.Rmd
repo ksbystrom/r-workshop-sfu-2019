@@ -1,0 +1,182 @@
+---
+title: "Fun with R"
+author: "Kristen Bystrom"
+date: "September 21, 2019"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = TRUE)
+```
+
+| Topics Covered                                        | Min | 
+|-------------------------------------------------------|-----|
+| Data Cleaning                                         | 10  | 
+| Model Training                                        | 10  | 
+| Intermediate Viualization                             | 10  | 
+| Bonus Highlight: Learn how to make memes with R!      | 10  |
+
+### Data Cleaning
+
+Let's load in my fitbit data for the last month for activity and sleep.
+```{r}
+activity <- read.csv("Activity.csv", stringsAsFactors = FALSE)
+sleep <- read.csv("Sleep.csv", stringsAsFactors = FALSE)
+```
+
+Let's take a look at the data.
+```{r}
+str(activity)
+str(sleep)
+```
+
+Notice how several of the variables are stored as **Characters**. This is a problem because R thinks they are text values instead of dates or numbers.
+
+Let's clean up the data types.
+
+```{r, warnings = FALSE}
+#install.packages("dplyr")
+#install.packages("lubridate")
+library(dplyr)
+library(lubridate)
+
+activity <- activity %>% mutate(
+    Date = ymd(Date), 
+    Calories.Burned = as.numeric(gsub(",", "", Calories.Burned)), 
+    Steps = as.numeric(gsub(",", "", Steps)),
+    Minutes.Sedentary = as.numeric(gsub(",", "", Minutes.Sedentary)),  
+    Minutes.Lightly.Active = as.numeric(gsub(",", "", Minutes.Lightly.Active)),
+    Minutes.Fairly.Active = as.numeric(gsub(",", "", Minutes.Fairly.Active)),
+    Minutes.Very.Active = as.numeric(gsub(",", "", Minutes.Very.Active)),
+    Activity.Calories = as.numeric(gsub(",", "", Activity.Calories))
+)
+
+sleep <- sleep %>% mutate(
+    Start.Time = ymd_hm(Start.Time), 
+    End.Time = ymd_hm(End.Time), 
+    Minutes.REM.Sleep = as.numeric(gsub("/","", Minutes.REM.Sleep)),
+    Minutes.Light.Sleep = as.numeric(gsub("/","", Minutes.Light.Sleep)),
+    Minutes.Deep.Sleep = as.numeric(gsub("/","", Minutes.Deep.Sleep)),
+    Date = date(End.Time)
+    
+)
+```
+
+If you look at the sleep data, there are some rows with 0 sleep recorded or less than two hours recorded. Let's assume these are nights where I charged my fitbit overnight and didn't record my sleep (and the less than 2 hours could be a nap). We want to get rid of these records since they will interfere with any models.
+
+```{r}
+sleep = sleep %>% filter(Minutes.Asleep > 120)
+```
+
+Similarily, in the activity data set, if there are 0 steps, the data probably didn't sync yet or I didn't wear my fitbit that day.
+
+```{r}
+activity = activity %>% filter(Steps > 0)
+```
+
+I want to be able to use my sleeping data with my activity data so I need to merge them together. 
+
+```{r}
+fitbit = inner_join(sleep, activity, by = "Date")
+```
+
+
+### Model Training
+
+Now I have a clean (although small) data set. Let's build a simple model that predicts Calories burned based on some of the other information. There's not much you can do with a data set this small, but let's try something anyways to learn!
+
+```{r}
+library(caret)
+
+inTraining <- createDataPartition(fitbit$Calories.Burned, p = .80, list = FALSE)
+training <- fitbit[ inTraining,]
+testing  <- fitbit[-inTraining,]
+```
+
+
+```{r}
+
+set.seed(825)
+bayesFit <- train(Calories.Burned ~ Minutes.Asleep + Minutes.Deep.Sleep + Steps + Minutes.Very.Active, data = training, 
+                 method = "bayesglm")
+bayesFit
+```
+
+Let's check how our model performs on our test set
+```{r}
+paste('Actual: ', testing$Calories.Burned)
+paste('Predicted: ', predict(bayesFit, newdata = testing))
+```
+
+
+### Intermediate Visualization
+
+Look how annoying 3D visualizations are to manipulate :p
+```{r}
+library(plotly)
+
+plot_ly(data = fitbit, 
+        x = ~Date, 
+        y = ~Minutes.Very.Active,
+        z = ~Calories.Burned)%>%
+  add_markers() %>%
+  layout(scene = list(xaxis = list(title = 'Date'),
+                     yaxis = list(title = 'Minutes Active'),
+                     zaxis = list(title = 'Calories Burned')))
+```
+
+Let's do better by using size, colour, etc to keep track of dimensions
+
+```{r, warning = FALSE}
+library(plotly)
+library(broom)
+
+m <- loess(Calories.Burned ~ Minutes.Very.Active, data = fitbit)
+
+fitbit %>% 
+  plot_ly(x = ~Minutes.Very.Active)%>%
+  add_markers(y = ~Calories.Burned, size = ~Steps, text = fitbit$Date, showlegend = FALSE, name = "Day") %>%
+  add_lines(y = ~fitted(loess(Calories.Burned ~ Minutes.Very.Active)),
+            line = list(color = '#07A4B5'),
+            name = "Loess Smoother", showlegend = TRUE)  %>%
+  add_ribbons(data = augment(m),
+              ymin = ~.fitted - 1.96 * .se.fit,
+              ymax = ~.fitted + 1.96 * .se.fit,
+              line = list(color = 'rgba(7, 164, 181, 0.05)'),
+              fillcolor = 'rgba(7, 164, 181, 0.2)',
+              name = "Standard Error")   %>%
+  layout(xaxis = list(title = 'Minutes Very Active'),
+         yaxis = list(title = 'Calories Burned'),
+         legend = list(x = 0.80, y = 0.20))
+```
+
+### Bonus Highlight: Learn how to make memes with R!
+
+The great thing about about source languages: anybody can develop a package (including you!). Here's one of my favourites!
+https://cran.r-project.org/web/packages/meme/vignettes/meme.html
+
+
+```{r}
+#install.packages("meme")
+library(meme)
+```
+
+```{r}
+#Only need to run the following line if you are using Windows
+if (.Platform$OS.type == "windows") {
+    windowsFonts(
+        Impact = windowsFont("Impact"),
+        Courier = windowsFont("Courier")
+    )
+}
+
+u <- system.file("success.jpg", package="meme")
+myMeme <- meme(u, "went to an R Workshop","learned how to make memes with code")
+myMeme
+meme_save(myMeme, file="successR.png")
+```
+
+
